@@ -9,6 +9,7 @@ from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 import torch
 
 from . import preprocessing, postprocessing
+from .classifier_service import ClassifierService, map_to_br
 
 
 class InferenceService:
@@ -17,6 +18,7 @@ class InferenceService:
         checkpoint_path = os.getenv("SAM_CHECKPOINT_PATH", "sam_vit_h_4b8939.pth")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.max_regions = int(os.getenv("MAX_REGIONS", "8"))
+        self.classifier = ClassifierService()
 
         sam_model = sam_model_registry[model_type](checkpoint=checkpoint_path)
         sam_model.to(self.device)
@@ -48,11 +50,16 @@ class InferenceService:
 
         items: List[dict] = []
         for idx, mask in enumerate(limited_masks):
-            polygon = postprocessing.mask_to_polygon(mask.get("segmentation"))
+            mask_np = mask.get("segmentation")
+            polygon = postprocessing.mask_to_polygon(mask_np)
+            crop = postprocessing.crop_by_mask(rgb_image, mask_np)
+            topk = self.classifier.predict_topk(crop, k=3)
+            label_en, conf = topk[0]
+            label_br = map_to_br(label_en)
             items.append(
                 {
-                    "label": f"region_{idx + 1}",
-                    "confidence": float(mask.get("predicted_iou", 1.0)),
+                    "label": label_br,
+                    "confidence": float(conf),
                     "mask_polygon": polygon,
                     "grams_estimated": None,
                     "kcal": None,

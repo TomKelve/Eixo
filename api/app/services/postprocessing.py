@@ -26,3 +26,27 @@ def filter_masks(masks: List[dict], min_area: int = 5000) -> List[dict]:
 def sort_by_area_desc(masks: List[dict]) -> List[dict]:
     """Sort masks in descending order by area."""
     return sorted(masks, key=lambda m: m.get("area", 0), reverse=True)
+
+
+def crop_by_mask(image: np.ndarray, mask: np.ndarray, padding: int = 8) -> np.ndarray:
+    """Crop the image around the mask's bounding box with padding and return RGB uint8."""
+    if mask.dtype != np.uint8:
+        mask_uint8 = (mask.astype(np.uint8))
+    else:
+        mask_uint8 = mask
+
+    coords = cv2.findNonZero(mask_uint8)
+    if coords is None:
+        return image
+
+    x, y, w, h = cv2.boundingRect(coords)
+    height, width = image.shape[:2]
+    x1 = max(x - padding, 0)
+    y1 = max(y - padding, 0)
+    x2 = min(x + w + padding, width)
+    y2 = min(y + h + padding, height)
+
+    crop = image[y1:y2, x1:x2]
+    if crop.dtype != np.uint8:
+        crop = np.clip(crop, 0, 255).astype(np.uint8)
+    return crop
