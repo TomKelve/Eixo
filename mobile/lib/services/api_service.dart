@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -39,5 +40,31 @@ class ApiService {
 
     final Map<String, dynamic> data = json.decode(response.body);
     return AnalyzeResponse.fromJson(data);
+  }
+
+  Future<void> sendFeedback(List<MealItem> items) async {
+    final uri = Uri.parse('$apiBaseUrl/feedback');
+    for (final item in items) {
+      final payload = {
+        'meal_item_id': _generateLocalId(),
+        'grams_user': item.gramsUser ?? item.gramsEstimated,
+        'accepted_label': item.label,
+        'mask_delta': null,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      final response = await http.post(
+        uri,
+        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+        body: jsonEncode(payload),
+      );
+      if (response.statusCode >= 400) {
+        throw HttpException('Failed to send feedback: ${response.statusCode}', uri: uri);
+      }
+    }
+  }
+
+  String _generateLocalId() {
+    final random = Random();
+    return '${DateTime.now().microsecondsSinceEpoch}-${random.nextInt(1 << 32)}';
   }
 }

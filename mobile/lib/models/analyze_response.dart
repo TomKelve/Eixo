@@ -3,7 +3,7 @@ class Macros {
   final double carbs;
   final double fat;
 
-  Macros({
+  const Macros({
     required this.protein,
     required this.carbs,
     required this.fat,
@@ -16,6 +16,18 @@ class Macros {
       fat: (json['fat'] as num?)?.toDouble() ?? 0,
     );
   }
+
+  Macros copyWith({
+    double? protein,
+    double? carbs,
+    double? fat,
+  }) {
+    return Macros(
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      fat: fat ?? this.fat,
+    );
+  }
 }
 
 class MealItem {
@@ -24,13 +36,15 @@ class MealItem {
   final double gramsEstimated;
   final double kcal;
   final Macros macros;
+  final double? gramsUser;
 
-  MealItem({
+  const MealItem({
     required this.label,
     required this.confidence,
     required this.gramsEstimated,
     required this.kcal,
     required this.macros,
+    this.gramsUser,
   });
 
   factory MealItem.fromJson(Map<String, dynamic> json) {
@@ -40,8 +54,29 @@ class MealItem {
       gramsEstimated: (json['grams_estimated'] as num?)?.toDouble() ?? 0,
       kcal: (json['kcal'] as num?)?.toDouble() ?? 0,
       macros: Macros.fromJson(json['macros'] as Map<String, dynamic>? ?? {}),
+      gramsUser: (json['grams_user'] as num?)?.toDouble(),
     );
   }
+
+  MealItem copyWith({
+    String? label,
+    double? confidence,
+    double? gramsEstimated,
+    double? kcal,
+    Macros? macros,
+    double? gramsUser,
+  }) {
+    return MealItem(
+      label: label ?? this.label,
+      confidence: confidence ?? this.confidence,
+      gramsEstimated: gramsEstimated ?? this.gramsEstimated,
+      kcal: kcal ?? this.kcal,
+      macros: macros ?? this.macros,
+      gramsUser: gramsUser ?? this.gramsUser,
+    );
+  }
+
+  double get effectiveGrams => gramsUser ?? gramsEstimated;
 }
 
 class ReferenceObject {
