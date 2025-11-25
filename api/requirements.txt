@@ -10,3 +10,5 @@ torch
 torchvision
 timm
 scikit-learn
+ultralytics
+shapely

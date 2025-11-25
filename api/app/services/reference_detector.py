@@ -1,8 +1,49 @@
-from fastapi import UploadFile
+import numpy as np
+from ultralytics import YOLO
+
+REFERENCE_SIZES_CM = {
+    "fork": 18.5,
+    "spoon": 17.0,
+    "knife": 20.0,
+    "can": 12.2,
+    "cup": 9.5,
+    "hand": 18.0,
+}
+
+TARGET_CLASSES = set(REFERENCE_SIZES_CM.keys())
 
 
 class ReferenceDetector:
-    async def detect(self, image: UploadFile) -> dict:
-        """Placeholder reference detection returning a conservative portion estimate."""
-        # Future: run segmentation/pose detection to find forks, plates, or coins for scale.
-        return {"portionGrams": 320.0, "reference": "default_plate"}
+    def __init__(self):
+        self.model = YOLO("yolov8n.pt")
+
+    def detect(self, image_rgb: np.ndarray):
+        results = self.model(image_rgb, verbose=False)[0]
+        candidates = []
+
+        for box, cls_idx in zip(results.boxes.xyxy, results.boxes.cls):
+            label = results.names.get(int(cls_idx), "")
+            if label not in TARGET_CLASSES:
+                continue
+
+            x1, y1, x2, y2 = box.tolist()
+            w = max(x2 - x1, 0.0)
+            h = max(y2 - y1, 0.0)
+            area = w * h
+            candidates.append((area, label, (x1, y1, w, h)))
+
+        if not candidates:
+            return None
+
+        _, label, bbox = max(candidates, key=lambda x: x[0])
+        x, y, w, h = bbox
+        real_cm = REFERENCE_SIZES_CM.get(label)
+        if not real_cm or h <= 0:
+            return None
+
+        cm_per_px = real_cm / h
+        return {
+            "type": label,
+            "bbox": [float(x), float(y), float(w), float(h)],
+            "scale_cm_per_px": float(cm_per_px),
+        }

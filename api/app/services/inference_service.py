@@ -8,8 +8,11 @@ from fastapi import UploadFile
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 import torch
 
-from . import preprocessing, postprocessing
+from . import postprocessing, preprocessing
 from .classifier_service import ClassifierService, map_to_br
+from .nutrition_service import calc_kcal, calc_macros
+from .portion_service import estimate_grams
+from .reference_detector import ReferenceDetector
 
 
 class InferenceService:
@@ -19,6 +22,7 @@ class InferenceService:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.max_regions = int(os.getenv("MAX_REGIONS", "8"))
         self.classifier = ClassifierService()
+        self.reference_detector = ReferenceDetector()
 
         sam_model = sam_model_registry[model_type](checkpoint=checkpoint_path)
         sam_model.to(self.device)
@@ -48,6 +52,9 @@ class InferenceService:
         sorted_masks = postprocessing.sort_by_area_desc(filtered_masks)
         limited_masks = sorted_masks[: self.max_regions]
 
+        reference_object = self.reference_detector.detect(rgb_image)
+        cm_per_px = reference_object.get("scale_cm_per_px") if reference_object else None
+
         items: List[dict] = []
         for idx, mask in enumerate(limited_masks):
             mask_np = mask.get("segmentation")
@@ -56,20 +63,32 @@ class InferenceService:
             topk = self.classifier.predict_topk(crop, k=3)
             label_en, conf = topk[0]
             label_br = map_to_br(label_en)
+            grams = None
+            kcal = None
+            macros = None
+
+            if cm_per_px is not None:
+                grams = estimate_grams(mask_np, cm_per_px, label_br)
+                try:
+                    kcal = calc_kcal(label_br, grams)
+                    macros = calc_macros(label_br, grams)
+                except KeyError:
+                    kcal = None
+                    macros = None
             items.append(
                 {
                     "label": label_br,
                     "confidence": float(conf),
                     "mask_polygon": polygon,
-                    "grams_estimated": None,
-                    "kcal": None,
-                    "macros": None,
+                    "grams_estimated": grams,
+                    "kcal": kcal,
+                    "macros": macros,
                 }
             )
 
         return {
             "items": items,
-            "reference_object": None,
+            "reference_object": reference_object,
         }
 
     async def analyze_video(self, video: UploadFile) -> dict:
