@@ -1,0 +1,36 @@
+# Flutter & Dart
+.build/
+.dart_tool/
+.packages
+.pub-cache/
+.idea/
+android/
+ios/
+macos/
+web/
+linux/
+windows/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+Generated.xcconfig
+flutter_export_environment.sh
+
+# Python & FastAPI
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.venv
+venv/
+.env.local
+
+# Notebooks & data
+.ipynb_checkpoints/
+ml/exports/models/*
+ml/exports/onnx/*
+ml/datasets/*
+
+# OS files
+.DS_Store
+Thumbs.db
