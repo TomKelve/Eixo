@@ -1,13 +1,19 @@
+"""Reference detection using COCO-scale objects.
+
+COCO does not include utensil classes; for the MVP we use common COCO
+objects as proxies for scale and will train a custom YOLO on BR utensils
+in a future sprint.
+"""
+
 import numpy as np
 from ultralytics import YOLO
 
 REFERENCE_SIZES_CM = {
-    "fork": 18.5,
-    "spoon": 17.0,
-    "knife": 20.0,
-    "can": 12.2,
-    "cup": 9.5,
-    "hand": 18.0,
+    "bottle": 22.0,
+    "wine glass": 13.0,
+    "cell phone": 15.0,
+    "book": 21.0,
+    "remote": 17.0,
 }
 
 TARGET_CLASSES = set(REFERENCE_SIZES_CM.keys())
