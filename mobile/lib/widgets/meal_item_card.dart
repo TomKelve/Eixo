@@ -94,14 +94,14 @@ class MealItemCard extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  onPressed: editable ? () => _handleDelta(-10) : null,
+                  onPressed: editable ? () => _handleDelta(-10.0) : null,
                   icon: const Icon(Icons.remove_circle_outline),
                 ),
                 Expanded(
                   child: Slider(
                     value: currentGrams.clamp(0, maxRange).toDouble(),
-                    min: 0,
-                    max: maxRange > 0 ? maxRange : 300,
+                    min: 0.0,
+                    max: (maxRange > 0 ? maxRange : 300).toDouble(),
                     label: '${currentGrams.toStringAsFixed(0)} g',
                     onChanged: editable
                         ? (value) => onChanged?.call(
@@ -111,7 +111,7 @@ class MealItemCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: editable ? () => _handleDelta(10) : null,
+                  onPressed: editable ? () => _handleDelta(10.0) : null,
                   icon: const Icon(Icons.add_circle_outline),
                 ),
               ],
