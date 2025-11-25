@@ -5,20 +5,25 @@ from torchvision import transforms
 from torchvision.transforms import functional as F
 from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
 
-BR_ALIASES = {
-    "rice": "arroz branco",
-    "beans": "feijão carioca",
-    "grilled_chicken": "frango grelhado",
-    "beef": "carne bovina grelhada",
-    "salad": "salada",
-    "pasta": "macarrão",
-    "egg": "ovo",
+BR_KEYWORDS = {
+    "arroz branco": ["rice", "risotto", "fried rice", "pilaf"],
+    "feijão carioca": ["bean", "beans", "lentil", "chili", "kidney bean", "black bean"],
+    "frango grelhado": ["chicken", "hen", "roast chicken", "grilled chicken"],
+    "carne bovina grelhada": ["beef", "steak", "meat", "roast beef", "burger"],
+    "macarrão": ["pasta", "spaghetti", "noodle", "lasagna"],
+    "salada": ["salad", "lettuce", "cabbage", "greens"],
+    "ovo": ["egg", "omelet", "omelette"],
 }
+
+CONF_THRESHOLD = 0.35
 
 
 def map_to_br(label_en: str) -> str:
-    normalized = label_en.lower().replace(" ", "_")
-    return BR_ALIASES.get(normalized, label_en)
+    s = label_en.lower()
+    for br_label, kws in BR_KEYWORDS.items():
+        if any(kw in s for kw in kws):
+            return br_label
+    return "desconhecido"
 
 
 class ClassifierService:
@@ -50,12 +55,17 @@ class ClassifierService:
         self.model.eval()
 
     def predict_topk(self, crop_rgb: np.ndarray, k: int = 3):
+        if crop_rgb.dtype != np.uint8:
+            crop_rgb = np.clip(crop_rgb, 0, 255).astype(np.uint8)
         pil_image = F.to_pil_image(crop_rgb)
         image_tensor = self.transform(pil_image).unsqueeze(0).to(self.device)
         with torch.no_grad():
             logits = self.model(image_tensor)
             probs = torch.softmax(logits, dim=1)
             topk_probs, topk_indices = torch.topk(probs, k=min(k, probs.shape[1]))
+
+        if topk_probs[0, 0].item() < CONF_THRESHOLD:
+            return [("desconhecido", float(topk_probs[0, 0].item()))]
 
         results = []
         for prob, idx in zip(topk_probs[0].cpu().numpy(), topk_indices[0].cpu().numpy()):
