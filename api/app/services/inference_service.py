@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from fastapi import UploadFile
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+import torch
 
 from . import preprocessing, postprocessing
 
@@ -14,8 +15,20 @@ class InferenceService:
     def __init__(self):
         model_type = os.getenv("SAM_MODEL_TYPE", "vit_h")
         checkpoint_path = os.getenv("SAM_CHECKPOINT_PATH", "sam_vit_h_4b8939.pth")
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.max_regions = int(os.getenv("MAX_REGIONS", "8"))
+
         sam_model = sam_model_registry[model_type](checkpoint=checkpoint_path)
-        self.mask_generator = SamAutomaticMaskGenerator(model=sam_model)
+        sam_model.to(self.device)
+        sam_model.eval()
+        self.mask_generator = SamAutomaticMaskGenerator(
+            model=sam_model,
+            points_per_side=24,
+            pred_iou_thresh=0.90,
+            stability_score_thresh=0.92,
+            crop_n_layers=1,
+            min_mask_region_area=5000,
+        )
 
     async def analyze(self, image: UploadFile) -> dict:
         file_bytes = await image.read()
@@ -24,19 +37,22 @@ class InferenceService:
     async def analyze_image(self, file_bytes: bytes) -> dict:
         image = preprocessing.load_image(file_bytes)
         resized_image = preprocessing.resize_if_needed(image)
-        normalized_image = preprocessing.normalize_image(resized_image)
+        rgb_image = preprocessing.ensure_rgb_uint8(resized_image)
 
-        masks = self.mask_generator.generate(normalized_image)
+        with torch.no_grad():
+            masks = self.mask_generator.generate(rgb_image)
+
         filtered_masks = postprocessing.filter_masks(masks)
         sorted_masks = postprocessing.sort_by_area_desc(filtered_masks)
+        limited_masks = sorted_masks[: self.max_regions]
 
         items: List[dict] = []
-        for idx, mask in enumerate(sorted_masks):
+        for idx, mask in enumerate(limited_masks):
             polygon = postprocessing.mask_to_polygon(mask.get("segmentation"))
             items.append(
                 {
                     "label": f"region_{idx + 1}",
-                    "confidence": 1.0,
+                    "confidence": float(mask.get("predicted_iou", 1.0)),
                     "mask_polygon": polygon,
                     "grams_estimated": None,
                     "kcal": None,

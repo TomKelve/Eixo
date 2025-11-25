@@ -28,8 +28,8 @@ def resize_if_needed(image: np.ndarray) -> np.ndarray:
     return resized
 
 
-def normalize_image(image: np.ndarray) -> np.ndarray:
-    """Normalize image to uint8 RGB format that SAM expects."""
+def ensure_rgb_uint8(image: np.ndarray) -> np.ndarray:
+    """Ensure the image is in RGB uint8 format for SAM."""
     if image.dtype != np.uint8:
         image = np.clip(image, 0, 255).astype(np.uint8)
     return image
