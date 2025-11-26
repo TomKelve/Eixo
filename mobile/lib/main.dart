@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
 
-import 'screens/home_screen.dart';
-
 void main() {
-  runApp(const CalorieBrApp());
+  runApp(const DebugApp());
 }
 
-class CalorieBrApp extends StatelessWidget {
-  const CalorieBrApp({super.key});
+class DebugApp extends StatelessWidget {
+  const DebugApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CalorieBR AI',
+      title: 'Debug CalorieBR',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.green,
-        brightness: Brightness.light,
+      home: const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Text(
+            'FUNCIONOU 🍽️',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
-      home: const HomeScreen(),
     );
   }
 }
