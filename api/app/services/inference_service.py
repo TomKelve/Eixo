@@ -13,6 +13,8 @@ from .classifier_service import ClassifierService, map_to_br
 from .nutrition_service import calc_kcal, calc_macros
 from .portion_service import estimate_grams
 from .reference_detector import ReferenceDetector
+from .insights_service import save_meal_from_analyze_response
+from .fitness_service import FitnessService
 
 
 class InferenceService:
@@ -23,6 +25,7 @@ class InferenceService:
         self.max_regions = int(os.getenv("MAX_REGIONS", "8"))
         self.classifier = ClassifierService()
         self.reference_detector = ReferenceDetector()
+        self.fitness_service = FitnessService()
 
         sam_model = sam_model_registry[model_type](checkpoint=checkpoint_path)
         sam_model.to(self.device)
@@ -86,10 +89,27 @@ class InferenceService:
                 }
             )
 
-        return {
+        response = {
             "items": items,
             "reference_object": reference_object,
         }
+
+        meal_log = save_meal_from_analyze_response(
+            user_id="demo",
+            meal_type="almoco",
+            goal_mode="cutting",
+            tdee=2000,
+            analyze_response=response,
+        )
+
+        response["fitness"] = self.fitness_service.evaluate_meal_for_mode(
+            meal_log, mode=meal_log.goal_mode
+        )
+        response["correction_plan"] = self.fitness_service.suggest_plate_corrections(
+            meal_log, target_kcal=600
+        )
+
+        return response
 
     async def analyze_video(self, video: UploadFile) -> dict:
         file_bytes = await video.read()
