@@ -82,8 +82,95 @@ class _ResultScreenState extends State<ResultScreen> {
     }
   }
 
+  Widget _buildFitnessCard(AnalyzeResponse response, ThemeData theme) {
+    final fitness = response.fitness;
+    if (fitness == null) return const SizedBox.shrink();
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Modo Academia: ${fitness.mode.toUpperCase()}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Nota do prato: ${fitness.fitnessScore.toStringAsFixed(1)}/10',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            ...fitness.diagnostics.messages.map(
+              (m) => Row(
+                children: [
+                  const Icon(Icons.check_circle, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(m, style: theme.textTheme.bodySmall)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCorrectionCard(AnalyzeResponse response, ThemeData theme) {
+    final plan = response.correctionPlan;
+    if (plan == null) return const SizedBox.shrink();
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Plano de correção do prato',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              plan.summaryText,
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Alterações sugeridas:',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            ...plan.suggestedChanges.map(
+              (c) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Text(
+                  '- ${c.label}: ${c.gramsCurrent.toStringAsFixed(0)}g → ${c.gramsSuggested.toStringAsFixed(0)}g'
+                  '${c.approxSpoonsRemove != null ? " (~${c.approxSpoonsRemove!.toStringAsFixed(1)} colheres a menos)" : ""}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final totalsCard = Card(
       color: Theme.of(context).colorScheme.primaryContainer,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -116,6 +203,14 @@ class _ResultScreenState extends State<ResultScreen> {
         child: Column(
           children: [
             totalsCard,
+            if (widget.response.fitness != null) ...[
+              const SizedBox(height: 8),
+              _buildFitnessCard(widget.response, theme),
+            ],
+            if (widget.response.correctionPlan != null) ...[
+              const SizedBox(height: 8),
+              _buildCorrectionCard(widget.response, theme),
+            ],
             if (widget.response.referenceObject != null) ...[
               const SizedBox(height: 8),
               Card(
