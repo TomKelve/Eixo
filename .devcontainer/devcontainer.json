@@ -1,0 +1,6 @@
+{
+  "name": "Flutter Codespace",
+  "image": "ghcr.io/cirruslabs/flutter:stable",
+  "forwardPorts": [3000],
+  "postCreateCommand": "flutter doctor && cd mobile && flutter pub get"
+}
